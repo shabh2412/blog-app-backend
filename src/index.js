@@ -3,9 +3,12 @@ const mongoose = require("mongoose");
 const blogRoute = require("./Routes/blogs.router");
 const cors = require("cors");
 const userRoute = require("./Routes/user.router");
+const bodyParser = require("body-parser");
 
 const app = express();
 app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get("/", (req, res) => {
 	res.sendFile(process.cwd() + "/package.json");
