@@ -1,20 +1,21 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const argon2 = require("argon2");
+const access = require("../permissions/acesses.json");
 
 const UserModel = require("../Schema/users.schema");
 const userRoute = express.Router();
 userRoute.use(express.json());
 
-// get all users
-userRoute.get("/", async (req, res) => {
-	try {
-		let data = await UserModel.find();
-		res.send(data);
-	} catch (err) {
-		res.send(err.message);
-	}
-});
+// // get all users
+// userRoute.get("/", async (req, res) => {
+// 	try {
+// 		let data = await UserModel.find();
+// 		res.send(data);
+// 	} catch (err) {
+// 		res.send(err.message);
+// 	}
+// });
 
 // login
 // check if the email and password hash matches or not.
@@ -29,6 +30,7 @@ userRoute.post("/login", async (req, res) => {
 					name: user.name,
 					email: user.email,
 					phone: user.phone,
+					role: user.role || "user",
 				};
 				if (matched) {
 					let primaryToken = jwt.sign(userData, "primaryToken", {
@@ -39,8 +41,11 @@ userRoute.post("/login", async (req, res) => {
 					});
 					res.send(
 						{
-							primaryToken,
-							refreshToken,
+							data: userData,
+							tokens: {
+								primaryToken,
+								refreshToken,
+							},
 						},
 						200
 					);
@@ -76,16 +81,53 @@ userRoute.post("/post", async (req, res) => {
 	}
 });
 
-// get details of logged in user.
-userRoute.get("/:user_id", async (req, res) => {
-	const _id = req.params.user_id;
-	const authorization = req.headers.authorization.split(" ");
-	if (authorization.length > 1) {
-		const token = {};
-		token.primaryToken = authorization[1];
+// admin only route
+userRoute.get("/allUsers", async (req, res) => {
+	const auth = req.headers.authorization;
+	// console.log(access);
+	if (auth) {
 		try {
-			let data = jwt.verify(token.primaryToken, "primaryToken");
-			res.send(data);
+			let token = auth.split(" ")[1];
+			let verified = jwt.verify(token, "primaryToken");
+			if (verified) {
+				let role = verified.role;
+				if (role === "admin") {
+					let users = await UserModel.find({});
+					res.send(users);
+				} else {
+					res.send({ message: "only admins are allowed" }, 401);
+				}
+			}
+		} catch (error) {
+			res.send(error.message);
+		}
+	} else {
+		res.send(403);
+	}
+});
+// userRoute.delete("/:user_id", async (req, res) => {
+// 	const token = req.headers;
+// });
+
+// get details of logged in user.
+userRoute.get("/", async (req, res) => {
+	const authorization = req.headers.authorization;
+	if (authorization) {
+		const auth = authorization.split(" ");
+		const token = {};
+		token.refreshToken = auth[1];
+		// console.log(token.refreshToken);
+		try {
+			let data = jwt.verify(token.refreshToken, "refreshToken");
+			// console.log(data);
+			if (data.email) {
+				delete data.iat;
+				delete data.exp;
+				token.primaryToken = jwt.sign(data, "primaryToken");
+				res.send({ user: data, tokens: token });
+			} else {
+				res.send(403);
+			}
 		} catch (err) {
 			res.send(err.message);
 		}
