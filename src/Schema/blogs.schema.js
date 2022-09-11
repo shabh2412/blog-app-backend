@@ -1,15 +1,24 @@
 const { Schema, model } = require("mongoose");
 
 const blogSchema = new Schema({
-	title: String,
-	author: String,
-	body: String,
-	comments: [{ body: String, date: Date }],
+	title: { type: String, required: true },
+	author: { type: Schema.Types.ObjectId, ref: "user" },
+	body: { type: String, required: true },
+	comments: {
+		type: [
+			{
+				body: String,
+				date: Date,
+				by: { type: Schema.Types.ObjectId, ref: "user" },
+			},
+		],
+		default: [],
+	},
 	date: { type: Date, default: Date.now },
-	hidden: Boolean,
+	hidden: { type: Boolean, default: false },
 	meta: {
-		votes: Number,
-		favs: Number,
+		votes: { type: Number, default: 0 },
+		favs: { type: Number, default: 0 },
 	},
 });
 
