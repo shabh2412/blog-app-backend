@@ -27,6 +27,7 @@ userRoute.post("/login", async (req, res) => {
 			try {
 				const matched = await argon2.verify(user.password, password);
 				const userData = {
+					_id: user._id,
 					name: user.name,
 					email: user.email,
 					phone: user.phone,
