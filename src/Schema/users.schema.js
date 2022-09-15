@@ -6,6 +6,7 @@ const userSchema = new Schema({
 	password: String,
 	phone: String,
 	role: { type: String, enum: ["admin", "user"], default: "user" },
+	viaOauth: { type: Boolean, default: false },
 	createdAt: { type: Date, default: Date.now() },
 });
 
