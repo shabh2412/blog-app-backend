@@ -20,6 +20,7 @@ const blogSchema = new Schema({
 		votes: { type: Number, default: 0 },
 		favs: { type: Number, default: 0 },
 	},
+	tags: [String], // added tags category.
 });
 
 const Blog = model("Blog", blogSchema);

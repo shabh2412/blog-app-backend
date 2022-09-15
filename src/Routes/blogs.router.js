@@ -44,4 +44,13 @@ blogRoute.post("/post", async (req, res) => {
 	}
 });
 
+blogRoute.delete("/:_id", async (req, res) => {
+	const authHeader = req.headers.authorization;
+	if (authHeader) {
+		res.send(200);
+	} else {
+		res.send({ message: "header is missing" }, 403);
+	}
+});
+
 module.exports = blogRoute;
