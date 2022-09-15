@@ -4,6 +4,7 @@ const argon2 = require("argon2");
 const access = require("../permissions/acesses.json");
 
 const UserModel = require("../Schema/users.schema");
+const { default: axios } = require("axios");
 const userRoute = express.Router();
 userRoute.use(express.json());
 
@@ -63,6 +64,87 @@ userRoute.post("/login", async (req, res) => {
 		res.send("incomplete data");
 	}
 });
+
+// OAUTH
+userRoute.post("/login/github", async (req, res) => {
+	const { code, state } = req.query;
+	// console.log(code, state);
+	try {
+		let response = await axios.post(
+			`https://github.com/login/oauth/access_token`,
+			null,
+			{
+				params: {
+					client_id: "c6c281322a00b7b88b67",
+					client_secret: "8cdd77e7580c67a7799522e5dc1e6bed5207c6e9",
+					code,
+				},
+				headers: {
+					accept: "application/json",
+				},
+			}
+		);
+		response = response.data;
+		let userData = await axios.get("https://api.github.com/user", {
+			headers: {
+				Authorization: `Bearer ${response.access_token}`,
+				accept: "application/json",
+			},
+		});
+		userData = userData.data;
+		let userExists = await doesUserExistInDb(userData.email);
+		if (!userExists) {
+			const { name, email, phone } = userData;
+			const newUser = new UserModel({
+				name,
+				email,
+				phone,
+				viaOauth: true,
+			});
+			console.log(newUser);
+			await newUser.save();
+		}
+		console.log(userExists);
+		let user = await UserModel.findOne({ email: userData.email });
+		const userDataFromDB = {
+			_id: user._id,
+			name: user.name,
+			email: user.email,
+			phone: user.phone,
+			role: user.role || "user",
+			viaOauth: user.viaOauth,
+		};
+		let primaryToken = jwt.sign(userDataFromDB, "primaryToken", {
+			expiresIn: "1 hour",
+		});
+		let refreshToken = jwt.sign(userDataFromDB, "refreshToken", {
+			expiresIn: "7 days",
+		});
+		return res.send(
+			{
+				data: userDataFromDB,
+				tokens: {
+					primaryToken,
+					refreshToken,
+				},
+			},
+			200
+		);
+	} catch (error) {
+		res.send(
+			{
+				message: error.message,
+			},
+			401
+		);
+	}
+});
+
+const doesUserExistInDb = async (email) => {
+	const user = await UserModel.findOne({ email });
+	if (user) return true;
+	return false;
+};
 
 // signup
 userRoute.post("/post", async (req, res) => {
