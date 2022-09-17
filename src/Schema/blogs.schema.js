@@ -7,9 +7,8 @@ const blogSchema = new Schema({
 	comments: {
 		type: [
 			{
-				body: String,
-				date: Date,
-				by: { type: Schema.Types.ObjectId, ref: "user" },
+				type: Schema.Types.ObjectId,
+				ref: "comment",
 			},
 		],
 		default: [],

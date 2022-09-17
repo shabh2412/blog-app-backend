@@ -4,13 +4,23 @@ const Blog = require("../Schema/blogs.schema");
 const jwt = require("jsonwebtoken");
 const UserModel = require("../Schema/users.schema");
 const { default: mongoose } = require("mongoose");
+const CommentModel = require("../Schema/comments.schema");
 
 const blogRoute = express.Router("");
 blogRoute.use(express.json());
 
 blogRoute.get("/", async (req, res) => {
 	// res.send({ message: "hi" });
-	const blogs = await Blog.find().populate("author", "name");
+	const blogs = await Blog.find()
+		.populate("author", "name")
+		.populate({
+			path: "comments",
+			populate: {
+				path: "by",
+				model: "user",
+				select: "name",
+			},
+		});
 	res.send(blogs);
 });
 
@@ -41,6 +51,41 @@ blogRoute.post("/post", async (req, res) => {
 		}
 	} catch (err) {
 		res.send(err.message);
+	}
+});
+
+blogRoute.post("/comment", async (req, res) => {
+	const authHeader = req.headers.authorization;
+	if (authHeader && authHeader.length > 0) {
+		const tokenArr = authHeader.split(" ");
+		if (tokenArr[1]) {
+			try {
+				const verify = jwt.verify(tokenArr[1], "primaryToken");
+				const body = req.body;
+				console.log(body);
+				const blog = await Blog.findById(body._id);
+				const newComment = new CommentModel({
+					message: body.comment,
+					by: verify._id,
+				});
+				newComment.save();
+				// const { comments } = blog;
+				blog.comments.push(newComment);
+				blog.save();
+				res.send(blog);
+			} catch (err) {
+				res.send(
+					{
+						err: err.message,
+					},
+					403
+				);
+			}
+		} else {
+			res.send("token not provided", 401);
+		}
+	} else {
+		res.send(401);
 	}
 });
 
